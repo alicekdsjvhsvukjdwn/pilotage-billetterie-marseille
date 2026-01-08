@@ -14,7 +14,8 @@ TX_FP = RAW_DIR / "transactions_sample.csv"
 ATT_FP = RAW_DIR / "attendance_sample.csv"
 
 REPORT_FP = DOCS_DIR / "data_quality_report.md"
-SUMMARY_FP = PROC_DIR / "quality_summary.csv"
+SUMMARY_FP = DOCS_DIR / "quality_summary.csv"
+
 
 
 def ensure_dirs() -> None:
