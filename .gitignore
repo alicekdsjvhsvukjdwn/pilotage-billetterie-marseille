@@ -10,6 +10,11 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
+# On versionne des exemples légers (portfolio)
+!data/raw/events.csv
+!data/raw/transactions_sample.csv
+!data/raw/attendance_sample.csv
+
 # OS / Editors
 .DS_Store
 Thumbs.db

@@ -30,7 +30,7 @@ def main():
     bi["purchase_day"] = bi["purchase_date"].dt.date.astype(str)
     bi["event_day"] = bi["event_date"].dt.date.astype(str)
     bi["is_early"] = (bi["days_before_event"] > 45).astype(int)
-    bi["is_late"] = (bi["days_before_event"] <= 7).astype(int)
+    bi["is_late"] = (bi[" days_before_event"] <= 7).astype(int)
 
     out = PROCESSED_DIR / "billetterie_bi.csv"
     bi.to_csv(out, index=False, encoding="utf-8")

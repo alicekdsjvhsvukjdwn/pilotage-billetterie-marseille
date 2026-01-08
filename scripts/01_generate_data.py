@@ -1,133 +1,243 @@
 # scripts/01_generate_data.py
 from __future__ import annotations
 
+import random
 from pathlib import Path
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 
 
-RAW_DIR = Path("data/raw")
+# -----------------------------
+# Config simple (tu peux ajuster)
+# -----------------------------
+SEED = 42
+N_EVENTS = 24
+TARGET_TRANSACTIONS = 9000  # transactions (pas tickets)
+START_DATE = "2026-03-01"   # période des événements
+END_DATE = "2026-06-30"
+OUTPUT_DIR = Path("data/raw")
 
 
-def make_events(rng: np.random.Generator, year=2026) -> pd.DataFrame:
-    events = [
-        # (event_id, name, venue, capacity, base_price, category)
-        ("EVT001", "Festival — Soirée Electro", "Friche la Belle de Mai", 1600, 29, "festival"),
-        ("EVT002", "Rap Live — Salle", "Espace Julien", 1200, 25, "salle"),
-        ("EVT003", "Pop/Indé — Salle", "Le Makeda", 450, 18, "salle"),
-        ("EVT004", "DJ Set — Club", "Le Cabaret Aléatoire", 700, 22, "club"),
-        ("EVT005", "Open Air — Electro", "Parc Borély", 3000, 24, "festival"),
-        ("EVT006", "Stand-up — Salle", "CEPAC Silo", 1800, 32, "salle"),
-    ]
-    df = pd.DataFrame(events, columns=["event_id", "event_name", "venue", "capacity", "base_price", "category"])
+# Marseille (fictif mais crédible)
+ZONES = [
+    "Vieux-Port", "Le Panier", "Noailles", "La Plaine", "Cours Julien",
+    "Castellane", "Prado", "Endoume", "Les Goudes", "L’Estaque",
+    "Belle de Mai", "Saint-Charles", "La Joliette", "Euroméditerranée",
+    "La Timone", "Mazargues", "Pointe Rouge", "Saint-Loup", "Saint-Barnabé"
+]
 
-    # Dates d'événement (échelonnées)
-    start = pd.Timestamp(f"{year}-03-15")
-    gaps = rng.integers(10, 28, size=len(df))
-    df["event_date"] = start + pd.to_timedelta(np.cumsum(gaps), unit="D")
-    return df
+VENUES = [
+    "Salle du Vieux-Port", "Théâtre du Panier", "La Friche (scène)", "Le Dôme (club)",
+    "Dock des Suds (fiction)", "Espace Joliette", "Théâtre Canebière", "Salle Prado"
+]
 
+GENRES = [
+    "Concert", "Théâtre", "Stand-up", "Festival", "Projection", "Conférence", "Danse"
+]
 
-def make_transactions(rng: np.random.Generator, events: pd.DataFrame, n_tx=25000) -> pd.DataFrame:
-    # Répartition des ventes par event proportionnelle à la capacité
-    weights = events["capacity"].to_numpy(dtype=float)
-    weights = weights / weights.sum()
-
-    chosen_events = rng.choice(events["event_id"], size=n_tx, p=weights)
-    df = pd.DataFrame({"tx_id": [f"TX{str(i).zfill(6)}" for i in range(1, n_tx + 1)], "event_id": chosen_events})
-
-    ev_map = events.set_index("event_id").to_dict(orient="index")
-    df["event_date"] = df["event_id"].map(lambda x: ev_map[x]["event_date"])
-    df["venue"] = df["event_id"].map(lambda x: ev_map[x]["venue"])
-    df["capacity"] = df["event_id"].map(lambda x: ev_map[x]["capacity"])
-    df["base_price"] = df["event_id"].map(lambda x: ev_map[x]["base_price"])
-    df["category"] = df["event_id"].map(lambda x: ev_map[x]["category"])
-
-    # Timing d’achat : la majorité achète avant, avec queue “last minute”
-    # days_before_event ∈ [0..120]
-    days_before = np.clip((rng.gamma(shape=2.2, scale=12, size=n_tx)).astype(int), 0, 120)
-    # inverser pour avoir plus de ventes “loin” et un pic “près”
-    days_before = np.clip(120 - days_before, 0, 120)
-    df["purchase_date"] = df["event_date"] - pd.to_timedelta(days_before, unit="D")
-    df["days_before_event"] = days_before
-
-    # Canaux
-    channels = np.array(["web", "partenaires", "guichet"])
-    p = np.array([0.72, 0.18, 0.10])
-    df["channel"] = rng.choice(channels, size=n_tx, p=p)
-
-    # Typologie public (local/touriste)
-    df["audience_type"] = rng.choice(["local", "touriste"], size=n_tx, p=[0.78, 0.22])
-
-    # Tarif (early/regular/late + réduits)
-    # Early si achat > 45 jours avant, late si <= 7 jours
-    def price_mult(d):
-        if d > 45:
-            return 0.85
-        if d <= 7:
-            return 1.10
-        return 1.00
-
-    mult = np.vectorize(price_mult)(df["days_before_event"].to_numpy())
-    # Réductions
-    discounts = rng.choice(["plein", "reduit", "etudiant"], size=n_tx, p=[0.75, 0.15, 0.10])
-    df["fare_type"] = discounts
-    disc_mult = np.where(discounts == "plein", 1.00, np.where(discounts == "reduit", 0.80, 0.70))
-
-    # Prix final + bruit léger
-    price = df["base_price"].to_numpy() * mult * disc_mult
-    price = price * rng.normal(1.0, 0.03, size=n_tx)
-    df["ticket_price"] = np.round(np.clip(price, 8, None), 2)
-
-    # Nb billets par transaction (panier)
-    # Web a tendance à avoir panier un poil plus haut
-    lam = np.where(df["channel"].to_numpy() == "web", 1.25, 1.12)
-    baskets = rng.poisson(lam=lam, size=n_tx) + 1
-    baskets = np.clip(baskets, 1, 6)
-    df["qty"] = baskets
-
-    df["revenue"] = np.round(df["ticket_price"] * df["qty"], 2)
-
-    # Géographie (fictif mais “Marseille vibe”)
-    zones = ["13001", "13002", "13003", "13004", "13005", "13006", "13007", "13008", "13009", "13010", "13011", "13012", "13013", "13014", "13015", "13016", "Aubagne", "La Ciotat", "Aix", "Autres"]
-    z_p = np.array([0.05,0.04,0.04,0.05,0.06,0.10,0.05,0.10,0.06,0.05,0.05,0.05,0.04,0.04,0.04,0.04,0.03,0.03,0.04,0.05])
-    z_p = z_p / z_p.sum()
-    df["geo_zone"] = rng.choice(zones, size=n_tx, p=z_p)
-
-    return df
+CHANNELS = ["web", "partenaire", "guichet", "pass"]
+TARIFFS = ["plein", "reduit", "early_bird", "last_minute"]
 
 
-def make_attendance(rng: np.random.Generator, tx: pd.DataFrame) -> pd.DataFrame:
-    # No-show plus fréquent quand achat très early + partenaire (hypothèse plausible)
-    early = tx["days_before_event"].to_numpy() > 60
-    partner = tx["channel"].to_numpy() == "partenaires"
-    base_ns = 0.04
-    p_ns = base_ns + 0.03 * early + 0.02 * partner
-    no_show = rng.random(size=len(tx)) < p_ns
-    att = tx[["tx_id", "event_id", "event_date", "qty"]].copy()
-    att["no_show"] = no_show.astype(int)
-    # Si no-show, on considère toute la transaction no-show (simple)
-    att["attended_qty"] = np.where(att["no_show"].to_numpy() == 1, 0, att["qty"].to_numpy())
-    return att
+def ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
 
 
-def main(seed=42):
-    rng = np.random.default_rng(seed)
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
+def pick_weighted(values, weights, size=1):
+    return random.choices(values, weights=weights, k=size)
 
-    events = make_events(rng)
-    tx = make_transactions(rng, events, n_tx=25000)
-    att = make_attendance(rng, tx)
 
-    events.to_csv(RAW_DIR / "events.csv", index=False, encoding="utf-8")
-    tx.to_csv(RAW_DIR / "transactions.csv", index=False, encoding="utf-8")
-    att.to_csv(RAW_DIR / "attendance.csv", index=False, encoding="utf-8")
+def dt_range(start: datetime, end: datetime) -> datetime:
+    """Random datetime in [start, end]."""
+    delta = end - start
+    sec = random.randint(0, int(delta.total_seconds()))
+    return start + timedelta(seconds=sec)
 
-    print("✅ Data generated:")
-    print(" -", (RAW_DIR / "events.csv").resolve())
-    print(" -", (RAW_DIR / "transactions.csv").resolve())
-    print(" -", (RAW_DIR / "attendance.csv").resolve())
-    print(f"   events={len(events)} tx={len(tx)} attendance={len(att)}")
+
+def main() -> None:
+    random.seed(SEED)
+    np.random.seed(SEED)
+    ensure_dir(OUTPUT_DIR)
+
+    start_dt = datetime.fromisoformat(START_DATE)
+    end_dt = datetime.fromisoformat(END_DATE)
+
+    # -----------------------------
+    # 1) events.csv
+    # -----------------------------
+    events = []
+    for i in range(1, N_EVENTS + 1):
+        event_id = f"E{i:03d}"
+
+        genre = random.choice(GENRES)
+        venue = random.choice(VENUES)
+        zone = random.choice(ZONES)
+
+        # date/heure de séance
+        event_dt = dt_range(start_dt, end_dt).replace(minute=0, second=0, microsecond=0)
+        # plutôt soir / week-end
+        hour = random.choice([18, 19, 20, 21])
+        event_dt = event_dt.replace(hour=hour)
+
+        capacity = int(np.random.choice([150, 250, 400, 700, 1200, 2000], p=[.10, .18, .22, .20, .18, .12]))
+        base_price = float(np.random.choice([12, 15, 18, 22, 28, 35, 45], p=[.10, .18, .20, .20, .16, .10, .06]))
+
+        event_name = f"{genre} — Session {i}"
+
+        events.append(
+            dict(
+                event_id=event_id,
+                event_name=event_name,
+                venue_name=venue,
+                date_time=event_dt.isoformat(sep=" "),
+                capacity=capacity,
+                base_price=base_price,
+                genre=genre,
+                quartier_zone=zone,
+            )
+        )
+
+    df_events = pd.DataFrame(events).sort_values("date_time").reset_index(drop=True)
+
+    # -----------------------------
+    # 2) transactions.csv
+    # -----------------------------
+    # On génère des transactions par événement, proportionnel à la capacité
+    tx_rows = []
+    tx_id = 1
+
+    # Params pricing
+    tariff_multiplier = {
+        "plein": 1.00,
+        "reduit": 0.80,
+        "early_bird": 0.75,
+        "last_minute": 0.90,
+    }
+    channel_fee = {  # petits effets, juste pour realism
+        "web": 1.00,
+        "partenaire": 1.02,
+        "guichet": 1.00,
+        "pass": 0.00,  # pass: prix géré différemment ci-dessous
+    }
+
+    # buyer_geo
+    geo_values = ["local", "touriste"]
+    geo_weights = [0.78, 0.22]  # Marseille = beaucoup de locaux
+
+    # lead-time distribution (jours avant l'événement)
+    # early_bird -> achats plus tôt, last_minute -> achats tardifs
+    def sample_lead_time(tariff: str) -> int:
+        if tariff == "early_bird":
+            return int(np.clip(np.random.normal(35, 12), 7, 90))
+        if tariff == "last_minute":
+            return int(np.clip(np.random.normal(2, 2), 0, 10))
+        # plein / réduit
+        return int(np.clip(np.random.normal(14, 10), 0, 60))
+
+    # tickets qty distribution (1-4 la plupart du temps)
+    def sample_qty() -> int:
+        return int(np.random.choice([1, 2, 3, 4, 5], p=[0.52, 0.30, 0.12, 0.05, 0.01]))
+
+    # For each event, generate target transactions proportional to capacity, with noise
+    cap_sum = df_events["capacity"].sum()
+    base_targets = (df_events["capacity"] / cap_sum * TARGET_TRANSACTIONS).values
+
+    for idx, ev in df_events.iterrows():
+        n_tx = int(np.random.poisson(lam=max(10, base_targets[idx] * np.random.uniform(0.85, 1.15))))
+        ev_dt = datetime.fromisoformat(str(ev["date_time"]))
+
+        for _ in range(n_tx):
+            tariff = pick_weighted(TARIFFS, [0.58, 0.18, 0.14, 0.10], size=1)[0]
+            channel = pick_weighted(CHANNELS, [0.68, 0.12, 0.14, 0.06], size=1)[0]
+            buyer_geo = pick_weighted(geo_values, geo_weights, size=1)[0]
+
+            lead_days = sample_lead_time(tariff)
+            purchase_dt = ev_dt - timedelta(days=lead_days) + timedelta(hours=random.randint(9, 21), minutes=random.choice([0, 10, 20, 30, 40, 50]))
+            # évite achat après event (au cas où lead_days = 0)
+            if purchase_dt > ev_dt:
+                purchase_dt = ev_dt - timedelta(hours=random.randint(1, 6))
+
+            qty = sample_qty()
+
+            # price model
+            base = float(ev["base_price"])
+            if channel == "pass":
+                # pass: achat "gratuit" sur transaction, on met 0 mais on garde l'info
+                total = 0.0
+            else:
+                unit = base * tariff_multiplier[tariff] * channel_fee[channel]
+                # petit bruit + arrondi
+                unit = max(5.0, unit + np.random.normal(0, 0.6))
+                total = round(unit * qty, 2)
+
+            tx_rows.append(
+                dict(
+                    transaction_id=f"T{tx_id:06d}",
+                    event_id=ev["event_id"],
+                    purchase_datetime=purchase_dt.isoformat(sep=" "),
+                    tickets_qty=qty,
+                    price_paid_total=total,
+                    channel=channel,
+                    tariff=tariff,
+                    buyer_geo=buyer_geo,
+                    lead_time_days=lead_days,
+                )
+            )
+            tx_id += 1
+
+    df_tx = pd.DataFrame(tx_rows)
+
+    # -----------------------------
+    # 3) attendance.csv (optionnel mais utile)
+    # -----------------------------
+    # proba no-show un peu plus forte si achat très tôt, et si "touriste"
+    att_rows = []
+    for _, r in df_tx.iterrows():
+        lead = int(r["lead_time_days"])
+        geo = r["buyer_geo"]
+        channel = r["channel"]
+
+        # base attendance
+        p_attend = 0.92
+        if lead >= 45:
+            p_attend -= 0.05
+        if lead >= 75:
+            p_attend -= 0.04
+        if geo == "touriste":
+            p_attend -= 0.03
+        if channel == "pass":
+            p_attend -= 0.02
+
+        p_attend = float(np.clip(p_attend, 0.75, 0.98))
+        attended = 1 if random.random() < p_attend else 0
+
+        att_rows.append(
+            dict(
+                transaction_id=r["transaction_id"],
+                attended=attended
+            )
+        )
+
+    df_att = pd.DataFrame(att_rows)
+
+    # -----------------------------
+    # Save
+    # -----------------------------
+    events_path = OUTPUT_DIR / "events.csv"
+    tx_path = OUTPUT_DIR / "transactions.csv"
+    att_path = OUTPUT_DIR / "attendance.csv"
+
+    df_events.to_csv(events_path, index=False, encoding="utf-8")
+    df_tx.to_csv(tx_path, index=False, encoding="utf-8")
+    df_att.to_csv(att_path, index=False, encoding="utf-8")
+
+    print("✅ Génération terminée")
+    print(f"- {events_path}  ({len(df_events)} lignes)")
+    print(f"- {tx_path}  ({len(df_tx)} lignes)")
+    print(f"- {att_path}  ({len(df_att)} lignes)")
+    print("Astuce: ouvre les CSV dans Excel / Power BI ou fais un quick check avec pandas.")
 
 
 if __name__ == "__main__":
