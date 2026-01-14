@@ -3,39 +3,550 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pilotage billetterie — Marseille</title>
+  <title>Pilotage billetterie — Marseille (dataset synthétique)</title>
+
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:860px;margin:40px auto;padding:0 16px;line-height:1.5}
-    .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0}
-    a{color:#6A4C93;text-decoration:none}
-    a:hover{text-decoration:underline}
-    .muted{color:#666;font-size:14px}
-    code{background:#f5f5f5;padding:2px 6px;border-radius:6px}
+    :root{
+      --bg:#0b0f19;
+      --panel:#111827;
+      --panel2:#0f172a;
+      --txt:#e5e7eb;
+      --muted:#9ca3af;
+      --border:#263244;
+      --accent:#8b5cf6;   /* violet */
+      --accent2:#ec4899;  /* rose */
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(139,92,246,.25), transparent 50%),
+        radial-gradient(900px 500px at 90% 0%, rgba(236,72,153,.18), transparent 55%),
+        var(--bg);
+      color:var(--txt);
+      line-height:1.55;
+    }
+
+    a{ color:inherit; text-decoration:none }
+    a:hover{ text-decoration:underline }
+
+    .wrap{ max-width: 1040px; margin: 0 auto; padding: 28px 16px 64px; }
+
+    /* top nav */
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(17,24,39,.65);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      position: sticky; top: 14px; z-index: 50;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px; }
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      box-shadow: 0 0 0 3px rgba(139,92,246,.12);
+    }
+    .nav{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .nav a{ color: var(--muted); font-size: 13px; padding: 6px 10px; border-radius:999px; }
+    .nav a:hover{ background: rgba(255,255,255,.06); color: var(--txt); text-decoration:none; }
+
+    /* hero */
+    .hero{
+      margin-top: 22px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .heroCard{
+      border:1px solid var(--border);
+      background: rgba(17,24,39,.75);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position: relative;
+    }
+    .heroCard::after{
+      content:"";
+      position:absolute; inset:-2px;
+      background: radial-gradient(900px 300px at 20% 0%, rgba(139,92,246,.18), transparent 55%);
+      pointer-events:none;
+    }
+    .hero h1{
+      margin: 0 0 8px;
+      font-size: clamp(26px, 3vw, 34px);
+      line-height: 1.15;
+      position: relative;
+    }
+    .sub{
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14.5px;
+      position: relative;
+    }
+
+    .badges{ display:flex; gap:8px; flex-wrap:wrap; margin: 12px 0 16px; position: relative; }
+    .badge{
+      font-size: 12px;
+      color: var(--txt);
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .badge.accent{
+      border-color: rgba(139,92,246,.35);
+      background: rgba(139,92,246,.12);
+    }
+    .badge.ok{
+      border-color: rgba(16,185,129,.35);
+      background: rgba(16,185,129,.10);
+    }
+
+    .cta{ display:flex; gap:10px; flex-wrap:wrap; position: relative; }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border:1px solid var(--border);
+      background: rgba(15,23,42,.75);
+      color: var(--txt);
+      font-weight: 600;
+      font-size: 13.5px;
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(139,92,246,.55); background: rgba(15,23,42,.92); text-decoration:none; }
+    .btn.primary{
+      border-color: rgba(139,92,246,.65);
+      background: linear-gradient(90deg, rgba(139,92,246,.20), rgba(236,72,153,.14));
+    }
+    .btn.ghost{ background: transparent; }
+
+    .sideCard{
+      border:1px solid var(--border);
+      background: rgba(15,23,42,.55);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .miniTitle{ font-weight: 800; margin: 0 0 10px; }
+    .miniList{ margin:0; padding-left: 16px; color: var(--muted); font-size: 13.5px; }
+    .miniList li{ margin: 6px 0; }
+    .miniList b{ color: var(--txt); font-weight: 700; }
+
+    /* sections */
+    section{ margin-top: 22px; }
+    .secTitle{
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    .secHint{ margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+
+    .grid3{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .card{
+      border:1px solid var(--border);
+      background: rgba(17,24,39,.65);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+    .card h3{ margin: 0 0 6px; font-size: 14.5px; }
+    .card p{ margin: 0; color: var(--muted); font-size: 13.5px; }
+
+    /* previews */
+    .preview{
+      position: relative;
+      border-radius: var(--radius);
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(15,23,42,.35);
+      padding: 16px;
+      min-height: 220px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap: 10px;
+      overflow:hidden;
+    }
+    .preview .tag{
+      display:inline-flex; gap:8px; align-items:center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .ph{
+      flex:1;
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.02)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0, rgba(255,255,255,.06) 1px, transparent 1px, transparent 18px);
+      border:1px solid rgba(255,255,255,.10);
+      display:grid;
+      place-items:center;
+      color: rgba(229,231,235,.8);
+      font-size: 13px;
+      text-align:center;
+      padding: 10px;
+    }
+    .preview .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    /* pipeline */
+    .steps{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .step{
+      border:1px solid var(--border);
+      background: rgba(15,23,42,.55);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .step .n{
+      width: 26px; height: 26px; border-radius: 999px;
+      display:grid; place-items:center;
+      font-weight: 800; font-size: 12px;
+      background: rgba(139,92,246,.16);
+      border: 1px solid rgba(139,92,246,.35);
+      margin-bottom: 8px;
+    }
+    .step .t{ font-weight: 800; font-size: 13.5px; margin-bottom: 4px; }
+    .step .d{ color: var(--muted); font-size: 13px; margin: 0; }
+
+    /* downloads */
+    .dl{
+      display:flex; flex-direction:column; gap: 10px;
+    }
+    .dl a{
+      display:flex; justify-content:space-between; gap: 10px; align-items:center;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(17,24,39,.55);
+    }
+    .dl a:hover{ text-decoration:none; border-color: rgba(139,92,246,.55); }
+    .dl .left{ display:flex; flex-direction:column; gap: 2px; }
+    .dl .name{ font-weight: 800; font-size: 13.5px; }
+    .dl .desc{ color: var(--muted); font-size: 12.5px; }
+    .pill{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+
+    /* insights/actions */
+    .ia{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .ia .box{
+      border:1px solid var(--border);
+      background: rgba(15,23,42,.55);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .ia .box h3{ margin:0 0 8px; font-size: 14px; }
+    .ia ul{ margin:0; padding-left: 16px; color: var(--muted); }
+    .ia li{ margin: 8px 0; }
+    .ia b{ color: var(--txt); }
+
+    /* footer */
+    footer{
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .links{ display:flex; gap: 10px; flex-wrap:wrap; }
+
+    /* responsive */
+    @media (max-width: 920px){
+      .hero{ grid-template-columns: 1fr; }
+      .grid3{ grid-template-columns: 1fr; }
+      .grid2{ grid-template-columns: 1fr; }
+      .steps{ grid-template-columns: 1fr; }
+      .ia{ grid-template-columns: 1fr; }
+      .topbar{ border-radius: 16px; }
+    }
+
+    /* reduce motion */
+    @media (prefers-reduced-motion: reduce){
+      .btn{ transition:none }
+    }
   </style>
 </head>
+
 <body>
-  <h1>Pilotage billetterie (dataset synthétique) — Marseille</h1>
-  <p class="muted">
-    Projet perso (2026) : KPI, segmentation et recommandations “prêtes à exécuter”
-    pour un festival / salle, avec données simulées mais réalistes.
-  </p>
+  <div class="wrap">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand"><span class="dot"></span> Pilotage billetterie</div>
+      <div class="nav">
+        <a href="#valeur">Valeur</a>
+        <a href="#previews">Dashboards</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#downloads">Livrables</a>
+        <a href="#actions">Insights</a>
+      </div>
+    </div>
 
-  <div class="card">
-    <h2>Livrables</h2>
-    <ul>
-      <li><b>Dashboard Direction</b> (à ajouter)</li>
-      <li><b>Dashboard Ops</b> (à ajouter)</li>
-      <li><b>Note de synthèse</b> : <code>docs/note_synthese.md</code></li>
-      <li><b>Qualité data</b> : <code>docs/data_quality_report.md</code></li>
-    </ul>
+    <!-- Hero -->
+    <div class="hero">
+      <div class="heroCard">
+        <h1>🎟️ Pilotage Billetterie — Marseille<br><span style="color:var(--muted);font-weight:700">(dataset synthétique réaliste)</span></h1>
+        <p class="sub">
+          Un cas “festival / salle” construit comme en prod : <b>KPIs</b>, <b>segmentation</b>,
+          <b>qualité data</b> et <b>recommandations prêtes à exécuter</b>.
+        </p>
+
+        <div class="badges">
+          <span class="badge accent">Python · génération + QC</span>
+          <span class="badge ok">Excel · dashboards</span>
+          <span class="badge">Marseille · zones/quartiers</span>
+          <span class="badge">Business · actions</span>
+        </div>
+
+        <div class="cta">
+          <!-- À brancher quand tu auras le fichier -->
+          <a class="btn primary" href="#" title="Ajoute ici le lien vers le fichier Excel (dans docs/ ou releases)">
+            ⬇️ Télécharger le dashboard Excel
+          </a>
+
+          <a class="btn" href="docs/note_synthese.md">🧠 Lire la note de synthèse</a>
+          <a class="btn ghost" href="https://github.com/alicekdsjvhsvukjdwn/pilotage-billetterie-marseille">🧩 Voir le repo</a>
+        </div>
+      </div>
+
+      <div class="sideCard">
+        <div class="miniTitle">En 10 secondes</div>
+        <ul class="miniList">
+          <li><b>Pourquoi :</b> suivre la perf billetterie + comprendre les publics.</li>
+          <li><b>Ce que tu vois :</b> CA/jour, remplissage, panier, canaux, no-show.</li>
+          <li><b>Ce que tu décides :</b> quoi pousser, quand, et via quel canal.</li>
+        </ul>
+        <div style="margin-top:14px;color:var(--muted);font-size:12.5px">
+          Dernière mise à jour : <span id="d"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Valeur -->
+    <section id="valeur">
+      <h2 class="secTitle">Ce que ça apporte (vraiment)</h2>
+      <p class="secHint">L’idée n’est pas de faire joli. C’est de répondre à : <b>“on fait quoi demain matin ?”</b></p>
+
+      <div class="grid3">
+        <div class="card">
+          <h3>📊 Pilotage</h3>
+          <p>KPIs essentiels : ventes/jour, CA, panier moyen, remplissage, canaux & tarifs.</p>
+        </div>
+        <div class="card">
+          <h3>🧭 Compréhension des publics</h3>
+          <p>Segmentation simple : early/late, local/touriste, zones Marseille, tarifs.</p>
+        </div>
+        <div class="card">
+          <h3>⚡ Actions opérationnelles</h3>
+          <p>Alertes + reco : relances ciblées, ajustement canaux, pricing, communication.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Previews -->
+    <section id="previews">
+      <h2 class="secTitle">Dashboards (preview)</h2>
+      <p class="secHint">Pour l’instant : placeholders propres. Tu remplaceras par des captures quand ton Excel est prêt.</p>
+
+      <div class="grid2">
+        <div class="preview">
+          <div>
+            <div style="font-weight:900;font-size:14.5px;margin-bottom:6px">Dashboard Direction</div>
+            <div class="tag">✅ KPIs · CA/jour · Top events · remplissage</div>
+          </div>
+
+          <!-- Remplace ça par une image quand tu l'as -->
+          <!-- <img src="assets/dash_direction.png" alt="Dashboard Direction" style="width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.1)"> -->
+          <div class="ph">📌 Capture à venir<br><span style="color:var(--muted)">KPIs + 2 graphes (CA/jour & Top 10 events)</span></div>
+
+          <div class="actions">
+            <a class="btn" href="#" title="Lien vers la feuille dans le fichier Excel si tu veux">Voir détails</a>
+            <a class="btn ghost" href="docs/note_synthese.md">Voir les recommandations</a>
+          </div>
+        </div>
+
+        <div class="preview">
+          <div>
+            <div style="font-weight:900;font-size:14.5px;margin-bottom:6px">Dashboard Ops</div>
+            <div class="tag">⚠️ Alertes · canaux · tarifs · no-show · lead time</div>
+          </div>
+
+          <!-- Remplace ça par une image quand tu l'as -->
+          <!-- <img src="assets/dash_ops.png" alt="Dashboard Ops" style="width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.1)"> -->
+          <div class="ph">📌 Capture à venir<br><span style="color:var(--muted)">Alertes ventes en baisse · canaux qui décrochent · no-show</span></div>
+
+          <div class="actions">
+            <a class="btn" href="#" title="Lien vers un onglet 'OPS' dans ton Excel">Voir détails</a>
+            <a class="btn ghost" href="docs/data_quality_report.md">Qualité data</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pipeline -->
+    <section id="pipeline">
+      <h2 class="secTitle">Comment c’est construit</h2>
+      <p class="secHint">Une pipeline simple, lisible, et reproductible (comme en prod, sans drama).</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <div class="t">Génération dataset</div>
+          <p class="d"><code>01_generate_data.py</code> → events / transactions / attendance.</p>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <div class="t">Contrôles qualité</div>
+          <p class="d"><code>02_quality_checks.py</code> → doublons, dates, tarifs, manquants.</p>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <div class="t">Tables “Excel-ready”</div>
+          <p class="d"><code>03_prepare_exports.py</code> → kpi_daily / kpi_event + bases.</p>
+        </div>
+        <div class="step">
+          <div class="n">4</div>
+          <div class="t">Dashboards + reco</div>
+          <p class="d">Excel → direction & ops + note “5 insights / 5 actions”.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads -->
+    <section id="downloads">
+      <h2 class="secTitle">Livrables (à ouvrir / télécharger)</h2>
+      <p class="secHint">Tout ce qui est utile pour juger vite : résultat, méthode, qualité, docs.</p>
+
+      <div class="dl">
+        <!-- Mets ton Excel dans docs/ ou mieux: dans GitHub Releases, puis remplace le href -->
+        <a href="#" title="À remplacer : lien vers ton fichier Excel">
+          <div class="left">
+            <div class="name">⬇️ Dashboard Excel (Direction + Ops)</div>
+            <div class="desc">Le fichier final à montrer en entretien.</div>
+          </div>
+          <span class="pill">à ajouter</span>
+        </a>
+
+        <a href="docs/note_synthese.md">
+          <div class="left">
+            <div class="name">🧠 Note de synthèse</div>
+            <div class="desc">5 insights + 5 actions prêtes à exécuter.</div>
+          </div>
+          <span class="pill">markdown</span>
+        </a>
+
+        <a href="docs/data_quality_report.md">
+          <div class="left">
+            <div class="name">✅ Rapport qualité data</div>
+            <div class="desc">Doublons, manquants, cohérence dates / tarifs.</div>
+          </div>
+          <span class="pill">markdown</span>
+        </a>
+
+        <a href="docs/dictionnaire_donnees.md">
+          <div class="left">
+            <div class="name">📚 Dictionnaire de données</div>
+            <div class="desc">Définitions des champs + règles de calcul.</div>
+          </div>
+          <span class="pill">markdown</span>
+        </a>
+
+        <a href="docs/quality_summary.csv">
+          <div class="left">
+            <div class="name">🧾 Résumé QC (CSV)</div>
+            <div class="desc">Un petit tableau synthèse des checks.</div>
+          </div>
+          <span class="pill">csv</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Insights / Actions -->
+    <section id="actions">
+      <h2 class="secTitle">Insights & actions (format “exécutable”)</h2>
+      <p class="secHint">
+        Tu peux laisser ces exemples maintenant, puis les remplacer par les vrais une fois le dashboard fini.
+      </p>
+
+      <div class="ia">
+        <div class="box">
+          <h3>🔎 5 insights (exemples)</h3>
+          <ul>
+            <li><b>Ventes “late” élevées</b> sur certains genres → risque de sous-remplissage si pas de relance.</li>
+            <li><b>Canal partenaire</b> performant mais irrégulier → dépendance + besoin de sécuriser.</li>
+            <li><b>Panier moyen</b> plus haut sur “pass” → bon levier pour stabiliser le CA.</li>
+            <li><b>No-show</b> plus fort sur certaines zones → ajuster la com / rappel.</li>
+            <li><b>Écart remplissage</b> selon quartiers → opportunité ciblage local.</li>
+          </ul>
+        </div>
+
+        <div class="box">
+          <h3>⚡ 5 actions (exemples)</h3>
+          <ul>
+            <li><b>Plan relance J-10</b> : email + social + budget 48h sur events faibles.</li>
+            <li><b>Réallocation canaux</b> : pousser web quand partenaire décroche (alerte auto).</li>
+            <li><b>Tarifs</b> : early bird sur événements “lents”, et bundle/pass sur forts paniers.</li>
+            <li><b>Réduction no-show</b> : rappel + infos accès + nudges (WhatsApp/SMS si possible).</li>
+            <li><b>Ciblage Marseille</b> : message local par zone/quartier selon perf historique.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>© <span id="y"></span> · Projet perso · Marseille</div>
+      <div class="links">
+        <a href="https://github.com/alicekdsjvhsvukjdwn/pilotage-billetterie-marseille">Repo GitHub</a>
+        <a href="#downloads">Livrables</a>
+        <a href="#previews">Dashboards</a>
+      </div>
+    </footer>
   </div>
 
-  <div class="card">
-    <h2>Repo</h2>
-    <p><a href="https://github.com/alicekdsjvhsvukjdwn/pilotage-billetterie-marseille">Voir le code et les scripts</a></p>
-  </div>
-
-  <p class="muted">Dernière mise à jour : <span id="d"></span></p>
-  <script>document.getElementById('d').textContent = new Date().toLocaleDateString('fr-FR');</script>
+  <script>
+    document.getElementById('d').textContent = new Date().toLocaleDateString('fr-FR');
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
